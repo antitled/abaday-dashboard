@@ -13,7 +13,7 @@ collectr_df = pd.read_csv("collectr-data.csv")
 abaday_df["Source"] = "Abaday"
 collectr_df["Source"] = "Collectr"
 
-# Normalize column names
+# Normalize columns
 abaday_df.rename(columns={
     "Card Name": "Name",
     "Raw Price (USD)": "Market Price",
@@ -25,13 +25,22 @@ collectr_df.rename(columns={
     "Average Cost Paid": "Purchase Price"
 }, inplace=True)
 
-# Add missing columns to Collectr
-collectr_df["Image URL"] = ""
+# Add necessary columns
+collectr_df["Franchise"] = collectr_df.get("Franchise", "Unknown")
+collectr_df["Image URL"] = collectr_df.get("Image URL", "")
 collectr_df["Owned"] = "Yes"
-collectr_df["Profit/Loss (USD)"] = collectr_df["Market Price"] - collectr_df["Purchase Price"]
-collectr_df["Profit/Loss (%)"] = ((collectr_df["Profit/Loss (USD)"] / collectr_df["Purchase Price"]).replace([float('inf'), -float('inf')], 0).fillna(0) * 100).round(2)
 
-# Combine dataframes
+# Safely calculate Profit/Loss
+collectr_df["Market Price"] = pd.to_numeric(collectr_df.get("Market Price", 0), errors="coerce").fillna(0)
+collectr_df["Purchase Price"] = pd.to_numeric(collectr_df.get("Purchase Price", 0), errors="coerce").fillna(0)
+collectr_df["Profit/Loss (USD)"] = collectr_df["Market Price"] - collectr_df["Purchase Price"]
+collectr_df["Profit/Loss (%)"] = (
+    ((collectr_df["Profit/Loss (USD)"] / collectr_df["Purchase Price"])
+     .replace([float("inf"), -float("inf")], 0)
+     .fillna(0)) * 100
+).round(2)
+
+# Combine data
 df = pd.concat([abaday_df, collectr_df], ignore_index=True)
 
 # Sidebar filters
@@ -49,7 +58,7 @@ st.metric("Total Cards", len(df))
 st.metric("Estimated Value", f"${df['Market Price'].sum():,.2f}")
 st.metric("Total Profit", f"${df['Profit/Loss (USD)'].sum():,.2f}")
 
-# Display cards
+# Card display
 st.markdown("### 📋 Card Details")
 for _, row in df.iterrows():
     with st.container():
