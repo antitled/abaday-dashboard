@@ -5,60 +5,31 @@ import pandas as pd
 st.set_page_config(page_title="Abaday Dashboard", layout="wide")
 st.title("💼 Abaday Card Portfolio")
 
-# Load data
 abaday_df = pd.read_csv("abaday_dashboard_data.csv")
-collectr_df = pd.read_csv("collectr-data.csv")
+collectr_df = pd.read_csv("collectr-data-fixed.csv")
 
-# Mark sources
 abaday_df["Source"] = "Abaday"
 collectr_df["Source"] = "Collectr"
 
-# Normalize columns
 abaday_df.rename(columns={
     "Card Name": "Name",
     "Raw Price (USD)": "Market Price",
     "Your Purchase Price": "Purchase Price"
 }, inplace=True)
 
-collectr_df.rename(columns={
-    "Product Name": "Name",
-    "Average Cost Paid": "Purchase Price"
-}, inplace=True)
-
-# Add necessary columns
-collectr_df["Franchise"] = collectr_df.get("Franchise", "Unknown")
-collectr_df["Image URL"] = collectr_df.get("Image URL", "")
-collectr_df["Owned"] = "Yes"
-
-# Safely calculate Profit/Loss
-collectr_df["Market Price"] = pd.to_numeric(collectr_df.get("Market Price", 0), errors="coerce").fillna(0)
-collectr_df["Purchase Price"] = pd.to_numeric(collectr_df.get("Purchase Price", 0), errors="coerce").fillna(0)
-collectr_df["Profit/Loss (USD)"] = collectr_df["Market Price"] - collectr_df["Purchase Price"]
-collectr_df["Profit/Loss (%)"] = (
-    ((collectr_df["Profit/Loss (USD)"] / collectr_df["Purchase Price"])
-     .replace([float("inf"), -float("inf")], 0)
-     .fillna(0)) * 100
-).round(2)
-
-# Combine data
 df = pd.concat([abaday_df, collectr_df], ignore_index=True)
 
-# Sidebar filters
 st.sidebar.header("Filters")
 source_filter = st.sidebar.multiselect("Source", df["Source"].unique(), default=df["Source"].unique())
-franchise_filter = st.sidebar.multiselect("Franchise", df["Franchise"].dropna().unique(), default=df["Franchise"].dropna().unique())
 owned_filter = st.sidebar.selectbox("Ownership", ["All", "Yes", "Wishlist"])
 df = df[df["Source"].isin(source_filter)]
-df = df[df["Franchise"].isin(franchise_filter)] if "Franchise" in df.columns else df
 if owned_filter != "All":
     df = df[df["Owned"] == owned_filter]
 
-# Summary
 st.metric("Total Cards", len(df))
 st.metric("Estimated Value", f"${df['Market Price'].sum():,.2f}")
 st.metric("Total Profit", f"${df['Profit/Loss (USD)'].sum():,.2f}")
 
-# Card display
 st.markdown("### 📋 Card Details")
 for _, row in df.iterrows():
     with st.container():
